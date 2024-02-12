@@ -7,22 +7,13 @@ local Forces = require "Forces"
 --object for exposing our public things
 local Public = {}
 
-local _mapSettings = {
-	BaseWidth = 75,
-	BaseHeightPadding = 10,
-	LaneWidth = 200,
-	LaneHeight = 20,
-	LaneSpacing = 20,
-	NumLanes = 2
-}
-
 local function makeSilo(teamIndex, teamName)
 	local surface = game.surfaces.nauvis
 	local force = game.forces[teamName]
 	local origin = force.get_spawn_position(surface)
 
 	local entityName = "rocket-silo"
-	local xAdjust = (_mapSettings.BaseWidth - game.entity_prototypes[entityName].tile_width) / 2
+	local xAdjust = (global.Data.MapSettings.BaseWidth - game.entity_prototypes[entityName].tile_width) / 2
 	
 	if teamIndex == 1 then
 		xAdjust = -xAdjust
@@ -92,42 +83,42 @@ end
 
 
 local function is_out_of_map(point)
-	if point.x < _mapSettings.Left then 
+	if point.x < global.Data.MapSettings.Left then 
 		return true 
 	end
 
-	if point.x > _mapSettings.Right then 
+	if point.x > global.Data.MapSettings.Right then 
 		return true 
 	end
 
-	if point.y < _mapSettings.Top then 
+	if point.y < global.Data.MapSettings.Top then 
 		return true 
 	end
 
-	if point.y > _mapSettings.Bottom then 
+	if point.y > global.Data.MapSettings.Bottom then 
 		return true 
 	end
 
 	--point is somewhere within the lane area
-	if point.x > -_mapSettings.LaneWidth / 2 and point.x < _mapSettings.LaneWidth / 2 then
+	if point.x > -global.Data.MapSettings.LaneWidth / 2 and point.x < global.Data.MapSettings.LaneWidth / 2 then
 		
 		--if the number of lanes is even
-		if _mapSettings.NumLanes % 2 == 0 then
+		if global.Data.MapSettings.NumLanes % 2 == 0 then
 			local absoluteY = math.abs(point.y)
 
 			--even # of lanes means spacing is centered so first instance must be halved
-			if absoluteY < .5 * _mapSettings.LaneSpacing then
+			if absoluteY < .5 * global.Data.MapSettings.LaneSpacing then
 				return true
 			end
 
 			--shift point down so we can calculate
-			local yCalc = absoluteY - (.5 * _mapSettings.LaneSpacing)
+			local yCalc = absoluteY - (.5 * global.Data.MapSettings.LaneSpacing)
 
 			--take modulus of combined lane height + spacing
-			yCalc = yCalc % (_mapSettings.LaneHeight + _mapSettings.LaneSpacing)
+			yCalc = yCalc % (global.Data.MapSettings.LaneHeight + global.Data.MapSettings.LaneSpacing)
 
 			--if the remainder is greater than the lane height, it's part of the lane spacing
-			if yCalc > _mapSettings.LaneHeight then
+			if yCalc > global.Data.MapSettings.LaneHeight then
 				return true
 			end
 		else
@@ -139,7 +130,7 @@ local function is_out_of_map(point)
 end
 
 local function isPlayerBoundary(point)
-	if math.abs(point.x) == (_mapSettings.LaneWidth / 2) - 1 then
+	if math.abs(point.x) == (global.Data.MapSettings.LaneWidth / 2) - 1 then
 		return true
 	end
 
@@ -153,7 +144,7 @@ function Public.OnChunkGenerated(event)
 		for y = event.area.left_top.y, event.area.right_bottom.y, 1 do
 			local point = {x = x, y = y}			
 			if is_out_of_map(point) then
-				if point.x > _mapSettings.Left and point.x < _mapSettings.Right and point.y <= _mapSettings.Bottom and point.y >= _mapSettings.Top then
+				if point.x > global.Data.MapSettings.Left and point.x < global.Data.MapSettings.Right and point.y <= global.Data.MapSettings.Bottom and point.y >= global.Data.MapSettings.Top then
 					surface.set_tiles({{name = "water", position = point}}, true)
 				else
 					surface.set_tiles({{name = "out-of-map", position = point}}, true) 
@@ -187,7 +178,7 @@ local function _setSpawnPoints()
 		local force = game.forces[teamName]
 
 		--get base center
-		local x = (_mapSettings.BaseWidth + _mapSettings.LaneWidth) / 2
+		local x = (global.Data.MapSettings.BaseWidth + global.Data.MapSettings.LaneWidth) / 2
 
 		--set first team to left side
 		if i == 1 then
@@ -202,27 +193,27 @@ local function _setSpawnPoints()
 end
 
 function Public.Initialize()
-	_mapSettings.Width = (_mapSettings.BaseWidth * 2) + _mapSettings.LaneWidth
-	_mapSettings.Left = -_mapSettings.Width / 2
-	_mapSettings.Right = _mapSettings.Width / 2
-	_mapSettings.Height = (_mapSettings.LaneHeight * _mapSettings.NumLanes) + (_mapSettings.LaneSpacing * (_mapSettings.NumLanes - 1)) + (_mapSettings.BaseHeightPadding * 2)
+	global.Data.MapSettings.Width = (global.Data.MapSettings.BaseWidth * 2) + global.Data.MapSettings.LaneWidth
+	global.Data.MapSettings.Left = -global.Data.MapSettings.Width / 2
+	global.Data.MapSettings.Right = global.Data.MapSettings.Width / 2
+	global.Data.MapSettings.Height = (global.Data.MapSettings.LaneHeight * global.Data.MapSettings.NumLanes) + (global.Data.MapSettings.LaneSpacing * (global.Data.MapSettings.NumLanes - 1)) + (global.Data.MapSettings.BaseHeightPadding * 2)
 
-	_mapSettings.Top = -_mapSettings.Height / 2
-	_mapSettings.Bottom = _mapSettings.Height / 2
+	global.Data.MapSettings.Top = -global.Data.MapSettings.Height / 2
+	global.Data.MapSettings.Bottom = global.Data.MapSettings.Height / 2
 
 	local surface = game.surfaces.nauvis;
 	surface.generate_with_lab_tiles = true
 
 	local map_gen_settings = surface.map_gen_settings
-	map_gen_settings.width = _mapSettings.Width
-	map_gen_settings.height = _mapSettings.Height
+	map_gen_settings.width = global.Data.MapSettings.Width
+	map_gen_settings.height = global.Data.MapSettings.Height
 	map_gen_settings.starting_area = 0
 	surface.map_gen_settings = map_gen_settings
 	
 	surface.clear(true)
 
-	for x = _mapSettings.Left, _mapSettings.Right, 32 do
-		for y = _mapSettings.Top, _mapSettings.Bottom, 32 do 
+	for x = global.Data.MapSettings.Left, global.Data.MapSettings.Right, 32 do
+		for y = global.Data.MapSettings.Top, global.Data.MapSettings.Bottom, 32 do 
 			local chunk = {math.floor(x / 32), math.floor(y / 32)}
 			surface.request_to_generate_chunks(chunk)
 		end
@@ -234,7 +225,7 @@ function Public.Initialize()
 end
 
 function Public.LaneWidth()
-	return _mapSettings.LaneWidth
+	return global.Data.MapSettings.LaneWidth
 end
 
 function  Public.ChartAll()
@@ -250,12 +241,12 @@ function  Public.ChartAll()
 			surface,
 			{
 				{
-					_mapSettings.Left,
-					_mapSettings.Top
+					global.Data.MapSettings.Left,
+					global.Data.MapSettings.Top
 				},
 				{
-					_mapSettings.Right,
-					_mapSettings.Bottom
+					global.Data.MapSettings.Right,
+					global.Data.MapSettings.Bottom
 				}
 			})
 	end

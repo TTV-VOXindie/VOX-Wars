@@ -5,7 +5,7 @@ local Public = {}
 
 local set_team = function(playerIndex, team)
 	--see if the player is already on a team
-	local currentTeam = Data.team_players[playerIndex]
+	local currentTeam = global.Data.team_players[playerIndex]
 
 	--if the player is on a team
 	if currentTeam then
@@ -17,24 +17,29 @@ local set_team = function(playerIndex, team)
 	if team then
 		--assign the player to the team
 		team.members[playerIndex] = game.players[playerIndex]
-	  	Data.team_players[playerIndex] = team
+		global.Data.team_players[playerIndex] = team
 	else
 		--clear the player's team
-		Data.team_players[playerIndex] = nil
+		global.Data.team_players[playerIndex] = nil
 	end
 
 	--mark player as not ready since they just switched teams
-	Data.ready_players[playerIndex] = nil
+	global.Data.ready_players[playerIndex] = nil
 end
+
 local function register_gui_action(gui, param)
-	local gui_actions = Data.gui_actions
+	log("gui_actions")
+	local gui_actions = global.Data.gui_actions
+	log("player_gui_actions")
 	local player_gui_actions = gui_actions[gui.player_index]
 	
+	log("if not player_gui_actions")
 	if not player_gui_actions then
 	  gui_actions[gui.player_index] = {}
 	  player_gui_actions = gui_actions[gui.player_index]
 	end
 
+	log("player_gui_actions = param")
 	player_gui_actions[gui.index] = param
 end
 
@@ -47,6 +52,7 @@ local green = function(str)
 end
 
 local function addTeamFrame(team, flow, current_team, admin)
+	log("in addTeamFrame")
 	local teamFrame = flow.add({
 		type = "frame",
 		direction = "vertical",
@@ -70,7 +76,6 @@ local function addTeamFrame(team, flow, current_team, admin)
 	})
 	--teamNameLabel.style.font_color = get_color(team, true)
 
-	
 	local titlePusher = teamTitleFlow.add({
 		type = "empty-widget"
 	})
@@ -87,6 +92,7 @@ local function addTeamFrame(team, flow, current_team, admin)
 		leaveTeamButton.style.height = 24
 		leaveTeamButton.style.top_padding = 0
 		leaveTeamButton.style.bottom_padding = 0
+		log("register leave team")
 		register_gui_action(leaveTeamButton, {type = "leaveTeam"})
 	elseif player_count < Constants.MaxNumPlayersOnTeam() then
 		local joinTeamButton = teamTitleFlow.add({
@@ -98,6 +104,7 @@ local function addTeamFrame(team, flow, current_team, admin)
 		joinTeamButton.style.height = 24
 		joinTeamButton.style.top_padding = 0
 		joinTeamButton.style.bottom_padding = 0
+		log("register join team")
 		register_gui_action(joinTeamButton, {type = "joinTeam", team = team})
 	end
 
@@ -120,8 +127,9 @@ local function addTeamFrame(team, flow, current_team, admin)
 
 	local membersText = ""
 	local isFirstMember = true
-	local ready_data = Data.ready_players
+	local ready_data = global.Data.ready_players
 
+	log("member shit")
 	for k, member in pairs(team.members or {}) do
 		player_count = player_count + 1
 		if isFirstMember then
@@ -152,7 +160,7 @@ local function update_team_tab(player)
 	local isPlayerAdmin = player.admin
 
 	--get the contents of the team tab
-	local teamSettingsTabContents = Data.elements.teamSettingsTabContents[player.index]
+	local teamSettingsTabContents = global.Data.elements.teamSettingsTabContents[player.index]
 
 	--if the contents are invalid, ignore
 	if not (teamSettingsTabContents and teamSettingsTabContents.valid) then 
@@ -172,14 +180,16 @@ local function update_team_tab(player)
 	teamsFrame.style.vertically_stretchable = true
 	teamsFrame.style.horizontally_stretchable = true
 
-	local currentTeam = Data.team_players[player.index]
+	local currentTeam = global.Data.team_players[player.index]
 
 	local teamsFlow = teamsFrame.add({
 		type = "flow",
 		direction = "horizontal"
 	})
   
-	for _, team in pairs (Data.config.teams) do
+	log("adding team frames for " .. #global.Data.config.teams .. " teams")
+	for _, team in pairs (global.Data.config.teams) do
+		log("adding team fram for team")
 	  addTeamFrame(team, teamsFlow, currentTeam, isPlayerAdmin)
 	end
 end
@@ -205,19 +215,6 @@ local guiFunctions =
 		--check_all_ready() --start countdown for ready
 	end,
 }
-local function build_sprite_buttons(player)
-    local player_global = global.playerData[player.index]
-
-    local button_table = player.gui.screen.ugg_main_frame.content_frame.contentFlow.button_frame.button_table
-    button_table.clear()
-
-    local number_of_buttons = player_global.button_count
-	for i = 1, number_of_buttons do
-        local sprite_name = item_sprites[i]
-        local button_style = (sprite_name == player_global.selected_item) and "yellow_slot_button" or "recipe_slot_button"
-        button_table.add{type="sprite-button", sprite=("item/" .. sprite_name), tags={action="ugg_select_button", item_name=sprite_name}, style=button_style}
-    end
-end
 
 local function addMapSettingsTab(tabPane)
 	--add tab
@@ -240,12 +237,12 @@ local function addMapSettingsTab(tabPane)
 	--get player
 	local player = game.players[tabPane.player_index]
 
-	Data.elements.teamSettingsTabContents[player.index] = flow
+	global.Data.elements.teamSettingsTabContents[player.index] = flow
 
 	update_team_tab(player)
 end
 
-function Public.SetPlayerGui(player) --create_config)_gui
+function Public.SetPlayerGui(player) --create_config_gui
 	
 	--if the player is not valid and connected
 	if not (player and player.valid and player.connected) then 
@@ -256,7 +253,7 @@ function Public.SetPlayerGui(player) --create_config)_gui
 
 	local isPlayerAdmin = player.admin
 
-	local playerData = global.playerData[player.index]
+	local playerData = global.Data.playerData[player.index]
 
 	--get reference to the screen
 	local gui = player.gui.screen
@@ -326,59 +323,6 @@ function Public.SetPlayerGui(player) --create_config)_gui
 	startButton.style.minimal_width = 250
 	--register_gui_action(start_button, {type = "start_round"})
 	configWindow.auto_center = true
-
-	if true then
-		return
-	end
-
-
-	--set to screen
-	local screen_element = player.gui.screen
-
-	--make the main window
-	local main_frame = screen_element.add{type="frame", name="ugg_main_frame", direction="vertical"}
-
-	local title_flow = main_frame.add{type = "flow", direction = "horizontal"}
-	title_flow.style.horizontally_stretchable = true
-	title_flow.style.horizontal_spacing = 8
-  
-	local title_label = title_flow.add{type = "label", caption = {"scenario-name"}, style = "frame_title"}
-	title_label.drag_target = main_frame
-  
-	local title_pusher = title_flow.add{type = "empty-widget", style = "draggable_space_header"}
-	title_pusher.style.height = 24
-	title_pusher.style.horizontally_stretchable = true
-	title_pusher.drag_target = main_frame
-
-	local title_close_button = title_flow.add{type = "sprite-button", style = "frame_action_button", sprite = "utility/close_white"}
-	--register_gui_action(title_close_button, {type = "spectator_join_team_button"})
-
-	--center it on screen
-	main_frame.auto_center = true
-
-	--
-	player.opened = main_frame
-
-	--make internal window for content
-	local content_frame = main_frame.add{type="frame", name="content_frame", direction="vertical", style="inside_shallow_frame_with_padding"}
-
-	local contentFlow = content_frame.add{type="flow", name="contentFlow", direction="vertical"}
-	contentFlow.style.vertical_spacing = 12
-
-	--make thing inside content frame
-	local controls_flow = contentFlow.add{type="flow", name="controls_flow", direction="horizontal"}
-
-	--add button
-	local button_caption = (playerData.controls_active) and {"scenario-name"} or "activate"
-	controls_flow.add{type="button", name="ugg_controls_toggle", caption=button_caption}
-
-	local initial_button_count = playerData.button_count
-    controls_flow.add{type="slider", name="ugg_controls_slider", value=initial_button_count, minimum_value=0, maximum_value=#item_sprites, style="notched_slider", enabled=playerData.controls_active}
-    controls_flow.add{type="textfield", name="ugg_controls_textfield", text=tostring(initial_button_count), numeric=true, allow_decimal=false, allow_negative=false, enabled=playerData.controls_active}
-
-    local button_frame = contentFlow.add{type="frame", name="button_frame", direction="horizontal", style="inside_shallow_frame_with_padding"}
-    button_frame.add{type="table", name="button_table", column_count=#item_sprites, style="filter_slot_table"}
-    build_sprite_buttons(player)
 end
 
 function Public.OnClick(event)
@@ -387,7 +331,7 @@ function Public.OnClick(event)
 		return 
 	end
 
-	local player_gui_actions = Data.gui_actions[gui.player_index]
+	local player_gui_actions = global.Data.gui_actions[gui.player_index]
 	
 	--if the player doesn't have registered actions
 	if not player_gui_actions then
@@ -405,34 +349,11 @@ function Public.OnClick(event)
 end
 
 function Public.OnValueChanged(event)
-	if event.element.name == "ugg_controls_slider" then
-        local player = game.players[event.player_index]
-        local player_global = global.playerData[player.index]
-
-        local new_button_count = event.element.slider_value
-        player_global.button_count = new_button_count
-
-        local controls_flow = player.gui.screen.ugg_main_frame.content_frame.contentFlow.controls_flow
-        controls_flow.ugg_controls_textfield.text = tostring(new_button_count)
-
-		build_sprite_buttons(player)
-    end
+	
 end
 
 function Public.OnTextChanged(event)
-    if event.element.name == "ugg_controls_textfield" then
-        local player = game.players[event.player_index]
-        local player_global = global.playerData[player.index]
-
-        local new_button_count = tonumber(event.element.text) or 0
-        local capped_button_count = math.min(new_button_count, #item_sprites)
-        player_global.button_count = capped_button_count
-
-        local controls_flow = player.gui.screen.ugg_main_frame.content_frame.contentFlow.controls_flow
-        controls_flow.ugg_controls_slider.slider_value = capped_button_count
-
-		build_sprite_buttons(player)
-    end
+    
 end
 
 

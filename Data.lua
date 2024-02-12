@@ -1,5 +1,29 @@
-local Public =
+local GameStateEnum = require "GameStateEnum"
+
+local Public = {}
+
+local data =
 {
+  GameState = GameStateEnum.Running,
+  SpawnerData = {},
+	NextCoinTick = 0,
+
+  MapSettings = {
+    BaseWidth = 75,
+    BaseHeightPadding = 10,
+    LaneWidth = 200,
+    LaneHeight = 20,
+    LaneSpacing = 20,
+    NumLanes = 2
+  },
+
+  playerData = {},
+
+	forces = {},
+	teamNameBySiloRegistrationNumber = {},
+
+
+
   gui_actions = {},
   team_players = {},
   elements =
@@ -36,5 +60,9 @@ local Public =
   random = nil,
   team_names = {}
 }
+
+function Public.Initialize()
+  global.Data = data
+end
 
 return Public

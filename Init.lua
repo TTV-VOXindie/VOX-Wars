@@ -1,6 +1,7 @@
 --a collection of things that need to be done on initialize
 
 --add references to other files
+local Data = require "Data"
 local Forces = require "Forces"
 local Map = require "Map"
 
@@ -8,8 +9,7 @@ local Map = require "Map"
 local Public = {}
 
 function Public.Initialize()
-	global.playerData = {}
-
+	Data.Initialize()
 	Forces.Initialize()
 	Map.Initialize()
 

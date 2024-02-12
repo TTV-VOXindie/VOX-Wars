@@ -10,38 +10,8 @@ local GUI = require "GUI"
 local Lobby = require "Lobby"
 local Data = require "Data"
 
---TODO: move data into its own file?
-local _data =
-{
-	gameState = GameStateEnum.Running,
-	spawnerData = {},
-	nextCoinTick = 0
-}
-
 local util = require("util")
 
-local function initialize()
-	--if we've already initialized
-	if global.didInitRun then
-		--abort
-		return
-	end
-
-	--do initialize
-	Init.Initialize()
-
-	--track that we initialized
-	global.didInitRun = true;
-end
-
-local function initialize_global(player)
-	global.playerData[player.index] = 
-	{ 
-		myCustomDataShit = true,
-		button_count = 0,
-		selected_item = nil
-	}
-end
 
 --https://lua-api.factorio.com/latest/events.html#on_player_joined_game
 local function on_player_joined_game(event)
@@ -86,9 +56,6 @@ local function on_player_created(event)
 	local playerIndex = event.player_index
 	local player = game.players[playerIndex]
 
-	game.surfaces.nauvis.print("fuck you vox")
-	initialize()
-	initialize_global(player)
 	GUI.SetPlayerGui(player)
 
 	-- local player = game.get_player(event.playerIndex)
@@ -99,11 +66,12 @@ local function on_player_created(event)
 	--get the player by index
 	local player = game.players[event.player_index]
 
+	local teamIndex = (event.player_index % 2) + 1
 	--get the first team name
-	local firstTeamName = Constants.MainTeamNames()[1]
+	local teamName = Constants.MainTeamNames()[teamIndex]
 
 	--assign the player to the first team
-	player.force = firstTeamName; --TODO: don't set force until GUI is up and running
+	player.force = teamName; --TODO: don't set force until GUI is up and running
 
 	local surface = game.surfaces.nauvis
 	local spawnPoint = player.force.get_spawn_position(surface)
@@ -132,7 +100,7 @@ local function on_player_created(event)
 
 	player.set_quick_bar_slot(11, "coin")
 
-	local message = "Player " .. player.name .. " was assigned to " .. firstTeamName;
+	local message = "Player " .. player.name .. " was assigned to " .. teamName;
 
 	--write a message
 	player.print(message)	
@@ -205,7 +173,7 @@ local function on_gui_opened(event)
 	cursor_stack.count = cursor_stack.count - 1
 
 	--save spawner data
-	_data.spawnerData[#_data.spawnerData + 1] =
+	global.Data.SpawnerData[#global.Data.SpawnerData + 1] =
 	{
 		shouldSpawn = true,
 		spawner = entity,
@@ -322,14 +290,14 @@ end
 
 local function handleSpawners(tick)
 
-	for _, spawnerData in ipairs(_data.spawnerData) do
+	for _, spawnerData in ipairs(global.Data.SpawnerData) do
 		handleSpawner(tick, spawnerData)
 	end
 	
 end
 
 local function handleCoins(tick)
-	if tick < _data.nextCoinTick then	
+	if tick < global.Data.NextCoinTick then	
 		return
 	end
 
@@ -337,7 +305,7 @@ local function handleCoins(tick)
 		util.insert_safe(player, {["coin"] = 1})
 	end
 
-	_data.nextCoinTick = tick + Constants.CoinDelayTicks()
+	global.Data.NextCoinTick = tick + Constants.CoinDelayTicks()
 end
 
 --https://lua-api.factorio.com/latest/events.html#on_tick
@@ -347,7 +315,7 @@ local function on_tick(event)
 
 	--TODO: check win coon
 
-	if _data.gameState == GameStateEnum.Running then
+	if global.Data.GameState == GameStateEnum.Running then
 		handleSpawners(tick)
 		handleCoins(tick)	
 	end
@@ -402,7 +370,7 @@ local function on_entity_destroyed(event)
 	local force = game.forces[teamName]
 
 	game.surfaces.nauvis.print(force.name .. " lost.")
-	_data.gameState = GameStateEnum.RoundOver
+	global.Data.GameState = GameStateEnum.RoundOver
 end
 --https://lua-api.factorio.com/latest/events.html#on_market_item_purchased
 local function on_market_item_purchased(event)
@@ -438,10 +406,10 @@ local function on_gui_closed(event)
 end
 
 --this is just here to act as an interface with the game itself 
-local tug_of_war = {}
+local voxWars = {}
 
 --register all of the event handlers we use
-tug_of_war.events =
+voxWars.events =
 {
 	[defines.events.on_built_entity] = on_built_entity, --https://lua-api.factorio.com/latest/events.html#on_built_entity
 	[defines.events.on_player_joined_game] = on_player_joined_game, --https://lua-api.factorio.com/latest/events.html#on_player_joined_game
@@ -449,7 +417,7 @@ tug_of_war.events =
 	[defines.events.on_gui_opened] = on_gui_opened, --https://lua-api.factorio.com/latest/events.html#on_gui_opened
 	[defines.events.on_console_chat] = on_console_chat, --https://lua-api.factorio.com/latest/events.html#on_console_chat
 	[defines.events.on_tick] = on_tick, --https://lua-api.factorio.com/latest/events.html#on_tick
- 	[defines.events.on_chunk_generated] = on_chunk_generated,
+	[defines.events.on_chunk_generated] = on_chunk_generated,
 	[defines.events.on_surface_cleared] = on_surface_cleared,
 	[defines.events.on_player_changed_position] = on_player_changed_position,
 	[defines.events.on_entity_destroyed] = on_entity_destroyed, --https://lua-api.factorio.com/latest/events.html#on_entity_destroyed
@@ -461,22 +429,16 @@ tug_of_war.events =
 	[defines.events.on_gui_closed] = on_gui_closed, --https://lua-api.factorio.com/latest/events.html#on_gui_closed
 }
 
-tug_of_war.on_init = function()
-
-	--initialize
-	initialize()
-
-	for _, player in pairs(game.players) do
-        initialize_global(player)
-		GUI.SetPlayerGui(player)
-    end
-	
+voxWars.on_init = function()
+	--do initialize
+	Init.Initialize()
 end
 
-tug_of_war.on_nth_tick =
+
+voxWars.on_nth_tick =
 {
   [5] = Map.ChartAll
 }
 
 --return our little interface so that the game can use it?
-return tug_of_war
+return voxWars

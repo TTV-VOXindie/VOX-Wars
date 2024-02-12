@@ -4,12 +4,6 @@
 local Constants = require "Constants"
 local Data = require "Data"
 
-local _data = 
-{
-	forces = {},
-	teamNameBySiloRegistrationNumber = {}
-}
-
 --object for exposing our public functions
 local Public = {}
 
@@ -50,17 +44,17 @@ local function setupForce(teamName)
 	setupBiterForce(teamName)
 
 	--setup empty data object for team
-	_data.forces[teamName] = {}
+	global.Data.forces[teamName] = {}
 
 	------------------
     local team =
     {
       name = teamName,
-      --color = script_data.config.colors[math.random(#script_data.config.colors)].name,
+      --color = scriptglobal.Data.config.colors[math.random(#scriptglobal.Data.config.colors)].name,
       members = {},
       team = "-"
     }
-    table.insert(Data.config.teams, team)
+    table.insert(global.Data.config.teams, team)
 	------------------
 end
 
@@ -84,16 +78,16 @@ function Public.Initialize()
 end
 
 function  Public.GetSiloByTeamName(teamName)
-	return _data.forces[teamName].silo
+	return global.Data.forces[teamName].silo
 end
 
 function Public.GetTeamNameBySiloRegistrationNumber(registrationNumber)
-	return _data.teamNameBySiloRegistrationNumber[registrationNumber]
+	return global.Data.teamNameBySiloRegistrationNumber[registrationNumber]
 end
 
 function  Public.SetSilo(teamName, silo, registrationNumber)
-	_data.forces[teamName].silo = silo
-	_data.teamNameBySiloRegistrationNumber[registrationNumber] = teamName
+	global.Data.forces[teamName].silo = silo
+	global.Data.teamNameBySiloRegistrationNumber[registrationNumber] = teamName
 end
 
 function Public.GetEnemyTeamName(teamName)
