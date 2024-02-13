@@ -25,12 +25,6 @@ local function on_player_joined_game(event)
 	--set the player as a spectator
 	player.spectator = true
 
-	--init_player_gui(player)
-
-	-- if not script_data.setup_finished then
-	-- 	refresh_config(player.index)
-	-- end
-
 	--if they are not on the player force, they have already picked a team this round
 	if player.force.name ~= "player" then
 		
@@ -66,21 +60,29 @@ local function on_player_created(event)
 	--get the player by index
 	local player = game.players[event.player_index]
 
-	local teamIndex = (event.player_index % 2) + 1
-	--get the first team name
-	local teamName = Constants.MainTeamNames()[teamIndex]
+	--TODO: make this not suck
+	if global.Data.GameState == GameStateEnum.Running then
+		local teamIndex = (event.player_index % 2) + 1
 
-	--assign the player to the first team
-	player.force = teamName; --TODO: don't set force until GUI is up and running
+		--get the first team name
+		local teamName = Constants.MainTeamNames()[teamIndex]
 
-	local surface = game.surfaces.nauvis
-	local spawnPoint = player.force.get_spawn_position(surface)
+		--assign the player to the team
+		player.force = teamName; --TODO: don't set force until GUI is up and running
 
-	-- player.character = nil
-	-- local character = surface.create_entity{name = "character", position = spawnPoint, force = player.force}
-	-- player.show_on_map = true
+		local surface = game.surfaces.nauvis
+		local spawnPoint = player.force.get_spawn_position(surface)
 
-	player.teleport(spawnPoint, surface)
+		-- player.character = nil
+		-- local character = surface.create_entity{name = "character", position = spawnPoint, force = player.force}
+		-- player.show_on_map = true
+
+		player.teleport(spawnPoint, surface)
+		local message = "Player " .. player.name .. " was assigned to " .. teamName;
+
+		--write a message
+		player.print(message)
+	end
 
 	-- player.set_controller
 	-- {
@@ -99,11 +101,6 @@ local function on_player_created(event)
 	player.set_quick_bar_slot(7, "utility-science-pack")
 
 	player.set_quick_bar_slot(11, "coin")
-
-	local message = "Player " .. player.name .. " was assigned to " .. teamName;
-
-	--write a message
-	player.print(message)	
 end
 
 --when an entity is built https://lua-api.factorio.com/latest/events.html#on_built_entity
@@ -232,6 +229,11 @@ local function handleSpawner(tick, spawnerData)
 		return
 	end
 
+	if not spawnerData.spawner and not spawnerData.spawner.valid then
+		game.surfaces.nauvis.print("yo dawg handle ur broken shit")
+		return
+	end
+
 	--get the team name
 	local teamName = spawnerData.spawner.force.name
 	
@@ -240,6 +242,10 @@ local function handleSpawner(tick, spawnerData)
 
 	local enemyTeamName = Forces.GetEnemyTeamName(teamName)
 	local enemySilo = Forces.GetSiloByTeamName(enemyTeamName)
+
+	if not (enemySilo and enemySilo.valid) then
+		return
+	end
 
 	--create spitter spawner at spawn https://lua-api.factorio.com/latest/classes/LuaEntity.html
 	local entity = surface.create_entity({
@@ -311,11 +317,10 @@ end
 --https://lua-api.factorio.com/latest/events.html#on_tick
 local function on_tick(event)
 	local tick = event.tick
-	drawCircles()
-
-	--TODO: check win coon
+	--TODO: check win con
 
 	if global.Data.GameState == GameStateEnum.Running then
+		drawCircles()
 		handleSpawners(tick)
 		handleCoins(tick)	
 	end
@@ -326,14 +331,23 @@ end
 --player.surface.create_entity{name="fire-flame", position=player.position, force="neutral"}
 
 local function on_chunk_generated(event)
-	Map.OnChunkGenerated(event)
+	if global.Data.GameState == GameStateEnum.Running then
+		Map.OnChunkGenerated(event)
+	end
 end
 
 local function on_surface_cleared(event)
-	Map.OnSurfaceCleared(event)
+	if global.Data.GameState == GameStateEnum.Running then
+		Map.OnSurfaceCleared(event)
+	end
 end
 
 local function on_player_changed_position(event)
+	--if the game state is not running
+	if global.Data.GameState ~= GameStateEnum.Running then
+		--we don't care about player position
+		return
+	end
 	local player = game.players[event.player_index]
 
 	local mainTeamNames = Constants.MainTeamNames()
@@ -369,8 +383,11 @@ local function on_entity_destroyed(event)
 	local teamName = Forces.GetTeamNameBySiloRegistrationNumber(event.registration_number)
 	local force = game.forces[teamName]
 
+
+	game.surfaces.nauvis.print(event.registration_number .. " destroyed.")
 	game.surfaces.nauvis.print(force.name .. " lost.")
-	global.Data.GameState = GameStateEnum.RoundOver
+
+	global.Data.GameState = GameStateEnum.Lobby
 end
 --https://lua-api.factorio.com/latest/events.html#on_market_item_purchased
 local function on_market_item_purchased(event)
@@ -426,7 +443,7 @@ voxWars.events =
 	[defines.events.on_gui_value_changed] = on_gui_value_changed, --https://lua-api.factorio.com/latest/events.html#on_gui_value_changed
 	[defines.events.on_gui_text_changed] = on_gui_text_changed, --https://lua-api.factorio.com/latest/events.html#on_gui_text_changed
 	[defines.events.on_player_removed] = on_player_removed, --https://lua-api.factorio.com/latest/events.html#on_player_removed
-	[defines.events.on_gui_closed] = on_gui_closed, --https://lua-api.factorio.com/latest/events.html#on_gui_closed
+	[defines.events.on_gui_closed] = on_gui_closed, --https://lua-api.factorio.com/latest/events.html#on_gui_closed\
 }
 
 voxWars.on_init = function()

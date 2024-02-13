@@ -1,5 +1,7 @@
 local Constants = require "Constants"
-local Data = require "Data"
+local GameStateEnum = require "GameStateEnum"
+local Map = require "Map"
+
 --object for exposing our public functions
 local Public = {}
 
@@ -197,23 +199,59 @@ end
 local function updateTeamGui()
 	for _, player in pairs (game.connected_players) do
 		update_team_tab(player)
-	  end
+	end
 end
 
 local guiFunctions =
 {
 	joinTeam = function(event, param)
 		set_team(event.player_index, param.team)
-		game.surfaces.nauvis.print("join team")
 		updateTeamGui() --refresh_config() --update guis
 		--check_all_ready() --start countdown for ready
 	end,
 	leaveTeam = function(event, param)
 		set_team(event.player_index)
-		game.surfaces.nauvis.print("leave team")
 		updateTeamGui() --refresh_config() --update guis
 		--check_all_ready() --start countdown for ready
 	end,
+	startRound = function (event, param)
+		if global.Data.GameState ~= GameStateEnum.Lobby then
+			return	
+		end
+
+		--TODO: should probably move this shit somewhere
+
+		Map.OnRoundStarted()
+
+		global.Data.GameState = GameStateEnum.Running
+		for _, player in pairs (game.connected_players) do
+
+			local team = global.Data.team_players[player.index]
+			
+			player.force = team.name
+
+			local surface = game.surfaces.nauvis
+			local spawnPoint = player.force.get_spawn_position(surface)
+			player.teleport(spawnPoint, surface)
+
+			player.character = nil
+			local character = surface.create_entity{name = "character", position = spawnPoint, force = player.force}
+			player.set_controller
+			{
+				type = defines.controllers.character,
+				character = character
+			}
+			player.show_on_map = true
+
+			local message = "Player " .. player.name .. " was assigned to " .. team.name;
+
+			--write a message
+			player.print(message)
+
+			--destroy the lobby gui
+			global.Data.elements.config[player.index].destroy()
+		end
+	end
 }
 
 local function addMapSettingsTab(tabPane)
@@ -253,8 +291,6 @@ function Public.SetPlayerGui(player) --create_config_gui
 
 	local isPlayerAdmin = player.admin
 
-	local playerData = global.Data.playerData[player.index]
-
 	--get reference to the screen
 	local gui = player.gui.screen
 
@@ -267,8 +303,7 @@ function Public.SetPlayerGui(player) --create_config_gui
 
 	configWindow.style.vertically_stretchable = false
 
-	--TODO: keep references
-	--script_data.elements.config[player.index] = configWindow
+	global.Data.elements.config[player.index] = configWindow
 
 	--add deep frame for tabs
 	local deepFrame = configWindow.add({
@@ -321,7 +356,7 @@ function Public.SetPlayerGui(player) --create_config_gui
 	})
 
 	startButton.style.minimal_width = 250
-	--register_gui_action(start_button, {type = "start_round"})
+	register_gui_action(startButton, {type = "startRound"})
 	configWindow.auto_center = true
 end
 

@@ -4,7 +4,7 @@ local Public = {}
 
 local data =
 {
-  GameState = GameStateEnum.Running,
+  GameState = GameStateEnum.Lobby,
   SpawnerData = {},
 	NextCoinTick = 0,
 

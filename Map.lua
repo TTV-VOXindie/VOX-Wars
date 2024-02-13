@@ -3,6 +3,7 @@
 --add references to other files
 local Constants = require "Constants"
 local Forces = require "Forces"
+local GameStateEnum = require "GameStateEnum"
 
 --object for exposing our public things
 local Public = {}
@@ -200,7 +201,9 @@ function Public.Initialize()
 
 	global.Data.MapSettings.Top = -global.Data.MapSettings.Height / 2
 	global.Data.MapSettings.Bottom = global.Data.MapSettings.Height / 2
+end
 
+function Public.OnRoundStarted()
 	local surface = game.surfaces.nauvis;
 	surface.generate_with_lab_tiles = true
 
@@ -229,6 +232,12 @@ function Public.LaneWidth()
 end
 
 function  Public.ChartAll()
+	--if the game state is not running
+	if global.Data.GameState ~= GameStateEnum.Running then
+		--we don't care about player position
+		return
+	end
+
 	local mainTeamNames = Constants.MainTeamNames()
 	local surface = game.surfaces.nauvis
 
