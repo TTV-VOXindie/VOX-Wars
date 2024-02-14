@@ -6,7 +6,91 @@ local data =
 {
   GameState = GameStateEnum.Lobby,
   SpawnerData = {},
+  CoinRate = 60 / 10, --10 per second
 	NextCoinTick = 0,
+  UnitRecipes = 
+  {
+		["automation-science-pack"] =
+    {
+      unitName = "small-biter",
+      price = 100,
+      spawnRate = 1 * 60 --1 second
+    },
+		["logistic-science-pack"] =
+    {
+      unitName = "medium-biter",
+      price = 200,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["military-science-pack"] =
+    {
+      unitName = "big-biter",
+      price = 300,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["chemical-science-pack"] =
+    {
+      unitName = "behemoth-biter",
+      price = 400,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["heavy-oil-barrel"] =
+    {
+      unitName = "small-spitter",
+      price = 100,
+      spawnRate = 1 * 60, --1 second
+      recipeNameForAssembler = "fill-heavy-oil-barrel"
+    },
+    ["lubricant-barrel"] =
+    {
+      unitName = "medium-spitter",
+      price = 200,
+      spawnRate = 1 * 60, --1 second
+      recipeNameForAssembler = "fill-lubricant-barrel"
+    },
+    ["crude-oil-barrel"] =
+    {
+      unitName = "big-spitter",
+      price = 300,
+      spawnRate = 1 * 60, --1 second
+      recipeNameForAssembler = "fill-crude-oil-barrel"
+    },
+    ["water-barrel"] =
+    {
+      unitName = "behemoth-spitter",
+      price = 400,
+      spawnRate = 1 * 60, --1 second
+      recipeNameForAssembler = "fill-water-barrel"
+    }
+  },
+
+  TurretRecipes = --TODO: make this valid
+  {
+    ["iron-plate"] =
+    {
+      unitName = "small-worm-turret",
+      price = 1,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["copper-plate"] =
+    {
+      unitName = "medium-worm-turret",
+      price = 2,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["steel-plate"] =
+    {
+      unitName = "big-worm-turret",
+      price = 3,
+      spawnRate = 1 * 60 --1 second
+    },
+    ["sulfur"] =
+    {
+      unitName = "behemoth-worm-turret",
+      price = 4,
+      spawnRate = 1 * 60 --1 second
+    }
+  },
 
   MapSettings = {
     BaseWidth = 75,

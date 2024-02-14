@@ -12,18 +12,32 @@ local Data = require "Data"
 
 local util = require("util")
 
+local function setPlayerToSpectator(player)
+	--set the player as a spectator
+	player.spectator = true
+
+	--make them not show on the map
+	player.show_on_map = false
+
+	player.force = "player"
+
+	local character = player.character
+	player.character = nil
+	if character then 
+		character.destroy()
+	end
+
+	player.set_controller({type = defines.controllers.spectator})
+end
 
 --https://lua-api.factorio.com/latest/events.html#on_player_joined_game
 local function on_player_joined_game(event)
 	local player = game.players[event.player_index]
 
-	--ignore if it's not a valid player (idk how that would happen)
+	--ignore if it's not a valid player
 	if not (player and player.valid) then
 		return
 	end
-
-	--set the player as a spectator
-	player.spectator = true
 
 	--if they are not on the player force, they have already picked a team this round
 	if player.force.name ~= "player" then
@@ -35,14 +49,14 @@ local function on_player_joined_game(event)
 		return
 	end
 
-	local character = player.character
-	player.character = nil
-	if character then 
-		character.destroy()
-	end
+	setPlayerToSpectator(player)
 
-	player.set_controller{type = defines.controllers.spectator}
-	player.teleport({1, 1}, Lobby.GetSurface())
+	if global.Data.GameState == GameStateEnum.Lobby then
+		player.teleport({1, 1}, Lobby.GetLobbySurface())
+	else
+		local surface = game.surfaces.nauvis
+		surface.print({"is-now-spectating", player.name})
+	end
 end
 
 --when a player is created https://lua-api.factorio.com/latest/events.html#on_player_created
@@ -50,87 +64,108 @@ local function on_player_created(event)
 	local playerIndex = event.player_index
 	local player = game.players[playerIndex]
 
-	GUI.SetPlayerGui(player)
-
-	-- local player = game.get_player(event.playerIndex)
-    -- local anchor = {gui=defines.relative_gui_type.market_gui, position=defines.relative_gui_position.right}
-    -- local frame = player.gui.relative.add{type="frame", anchor=anchor}
-    -- frame.add{type="label", caption=player.name}
+	if global.Data.GameState == GameStateEnum.Lobby then
+		GUI.MakeLobbyGui(player)
+	end
 
 	--get the player by index
 	local player = game.players[event.player_index]
 
-	--TODO: make this not suck
-	if global.Data.GameState == GameStateEnum.Running then
-		local teamIndex = (event.player_index % 2) + 1
+	player.set_quick_bar_slot(1, "assembling-machine-2")
 
-		--get the first team name
-		local teamName = Constants.MainTeamNames()[teamIndex]
-
-		--assign the player to the team
-		player.force = teamName; --TODO: don't set force until GUI is up and running
-
-		local surface = game.surfaces.nauvis
-		local spawnPoint = player.force.get_spawn_position(surface)
-
-		-- player.character = nil
-		-- local character = surface.create_entity{name = "character", position = spawnPoint, force = player.force}
-		-- player.show_on_map = true
-
-		player.teleport(spawnPoint, surface)
-		local message = "Player " .. player.name .. " was assigned to " .. teamName;
-
-		--write a message
-		player.print(message)
+	local i = 2
+	for itemName, unitRecipe in pairs(global.Data.UnitRecipes) do
+		player.set_quick_bar_slot(i, itemName)
+		i = i + 1
 	end
-
-	-- player.set_controller
-	-- {
-	-- 	type = defines.controllers.character,
-	-- 	character = character
-	-- }
-	--player.color = get_color(team)
-	--player.chat_color = get_color(team, true)
-
-	player.set_quick_bar_slot(1, "assembling-machine-1")
-	player.set_quick_bar_slot(2, "automation-science-pack")
-	player.set_quick_bar_slot(3, "logistic-science-pack")
-	player.set_quick_bar_slot(4, "military-science-pack")
-	player.set_quick_bar_slot(5, "chemical-science-pack")
-	player.set_quick_bar_slot(6, "production-science-pack")
-	player.set_quick_bar_slot(7, "utility-science-pack")
 
 	player.set_quick_bar_slot(11, "coin")
 end
 
+local function getSafeAreaAroundEntity(entity)
+	local xAdjust =  ((entity.tile_width * .5) + 1)
+	local yAdjust =  ((entity.tile_height * .5) + 1)
+	return {
+		left_top = 
+		{ 
+			x = entity.position.x - xAdjust, 
+			y = entity.position.y - yAdjust 
+		},
+		right_bottom = 
+		{
+			x = entity.position.x + xAdjust, 
+			y = entity.position.y + yAdjust
+		}
+	}
+end
+
+local function doesEntityHaveNeighbors(surface, entity, entitySafeArea)
+	
+	local entitiesInArea = surface.count_entities_filtered({
+		area = entitySafeArea,
+		collision_mask = "object-layer",
+		limit = 2 --limit 2 beacuse we'd be including ourselves
+	})
+
+	--if there is more than one entity (ourself), then we have neighbors
+	return entitiesInArea > 1
+end
+
+local function doesAreaContainUnspawnableTiles(surface, area)
+
+	local tiles = surface.count_tiles_filtered({
+		area = area,
+		collision_mask = "player-layer",
+		limit = 1
+	})
+
+	return tiles > 0
+end
+
+local function destroyBuiltEntityAndReturnToPlayerInventory(player, entity, message)
+	util.insert_safe(player, {[entity.name] = 1})
+
+	player.print(message)
+	entity.destroy()
+end
+
+
 --when an entity is built https://lua-api.factorio.com/latest/events.html#on_built_entity
 local on_built_entity = function(event)
-	--if the entity is an assembler
-	if event.created_entity.name == "assembling-machine-1" or event.created_entity.name == "assembling-machine-2" or event.created_entity.name == "assembling-machine-3" then
-		--set the recipe
-		event.created_entity.set_recipe("empty-barrel") --not setting this to something breaks our setup because the assembler gui won't open
 
-		--red: "automation-science-pack"
-		--green: "logistic-science-pack"
-		--black: "military-science-pack"
-		--blue: "chemical-science-pack"
-		--purple: "production-science-pack"
-		--yellow: "utility-science-pack"
-		--(can't be used as a recipe) white: "space-science-pack"
-
-		--don't let the player change the recipe
-		event.created_entity.recipe_locked = true
+	--if it's not an assembling machine
+	if not (event.created_entity.name == "assembling-machine-1" or event.created_entity.name == "assembling-machine-2" or event.created_entity.name == "assembling-machine-3") then
+		--ignore it
+		return
 	end
+
+	local player = game.players[event.player_index]
+	local surface = game.surfaces.nauvis
+	local entitySafeArea = getSafeAreaAroundEntity(event.created_entity)
+
+	local doesEntityHaveNeighbors = doesEntityHaveNeighbors(surface, event.created_entity, entitySafeArea)
+
+	if doesEntityHaveNeighbors then
+		destroyBuiltEntityAndReturnToPlayerInventory(player, event.created_entity, {"cannot-build-next-to-other-entities"})
+		return
+	end
+
+	local doesAreaContainUnspawnableTiles = doesAreaContainUnspawnableTiles(surface, entitySafeArea)
+
+	if doesAreaContainUnspawnableTiles then
+		destroyBuiltEntityAndReturnToPlayerInventory(player, event.created_entity, {"cannot-build-next-to-boundary"})
+		return
+	end
+
+	--set the recipe
+	event.created_entity.set_recipe(Constants.EmptyAssemblerRecipe()) --not setting this to something breaks our setup because the assembler gui won't open
+
+	--don't let the player change the recipe
+	event.created_entity.recipe_locked = true
 end
 
 --https://lua-api.factorio.com/latest/events.html#on_gui_opened
 local function on_gui_opened(event)
-
-	-- if event.gui_type == defines.gui_type.entity and event.entity.type == "market" then
-    --     local player = game.players[event.player_index]
-    --     local custom_frame = player.gui.screen.add{type="frame", caption="Custom Market Interface"}
-    --     player.opened = custom_frame
-    -- end
 
 	--get the player by index
 	local player = game.players[event.player_index]
@@ -141,7 +176,7 @@ local function on_gui_opened(event)
 
 	local entity = event.entity
 
-	if entity.name ~= "assembling-machine-1" then
+	if entity.name ~= "assembling-machine-2" then
 		return
 	end
 
@@ -153,18 +188,41 @@ local function on_gui_opened(event)
 	
 	--close the gui the player had open (so don't open the entity gui)
 	player.opened = nil
+	
+	local itemName = cursor_stack.name
 
-	--get the current recipe in the assembler
-	local currentRecipe = entity.get_recipe()
-
-	--if there's already a recipe and it's the same as the one we're trying to assign
-	if currentRecipe and currentRecipe.name == cursor_stack.name then
+	--if it's not a valid recipe
+	if not global.Data.UnitRecipes[itemName] then
 		--bail out
 		return
 	end
 
+	--get the recipe name for the assembling machine
+	local recipeName = Constants.MapItemNameToRecipeName(itemName)
+
+	--get the current recipe in the assembler
+	local currentRecipe = entity.get_recipe()
+
+	
+
+	--if there's already a recipe and it's the same as the one we're trying to assign
+	if currentRecipe and currentRecipe.name == recipeName then
+		--bail out
+		return
+	end	
+
 	--set the recipe to be what was in the player cursor
-	entity.set_recipe(cursor_stack.name)
+	entity.set_recipe(recipeName)
+
+	
+	--get direction
+	local direction = defines.direction.east
+	if player.force.name == Constants.MainTeamNames()[2] then
+		direction = defines.direction.west
+	end
+
+	--set direction
+	entity.direction = direction
 
 	--reduce the number of items in the stack
 	cursor_stack.count = cursor_stack.count - 1
@@ -172,9 +230,9 @@ local function on_gui_opened(event)
 	--save spawner data
 	global.Data.SpawnerData[#global.Data.SpawnerData + 1] =
 	{
-		shouldSpawn = true,
 		spawner = entity,
-		nextSpawnTick = 0	
+		nextSpawnTick = event.tick + global.Data.UnitRecipes[itemName].spawnRate,
+		itemName = itemName
 	} 
 end
 
@@ -184,16 +242,15 @@ local function on_console_chat(event)
 	local player = game.players[event.player_index]
 end
 
-local function drawCircles()
-	local firstTeamName = Constants.MainTeamNames()[1]
-	local surface = game.surfaces.nauvis
+
+local function drawTeamCircles(surface, teamName)
 	local entities = surface.find_units({
 		area = {{-1000, -1000}, {1000, 1000}},
-		force = firstTeamName,
+		force = teamName,
 		condition = "friend"
 		})
 
-	local force = game.forces[firstTeamName]
+	local force = game.forces[teamName]
 
 	for _, entity in pairs(entities) do
 		rendering.draw_circle({
@@ -206,10 +263,22 @@ local function drawCircles()
 			draw_on_ground = true
 			})
 	end
+end
+
+local function drawCircles()
+	local mainTeamNames = Constants.MainTeamNames()
+	local surface = game.surfaces.nauvis
+	
+	for _, teamName in ipairs(mainTeamNames) do
+		drawTeamCircles(surface, teamName)
+	end
 
 	for _, player in (pairs(game.players)) do
+		if player.spectator then
+			return
+		end
 		rendering.draw_circle({
-			color = force.color,
+			color = player.force.color,
 			radius = .75,
 			width = 5,
 			target = player.position,
@@ -220,17 +289,9 @@ local function drawCircles()
 	  end
 end
 
+
 local function handleSpawner(tick, spawnerData)
-	if not spawnerData.shouldSpawn then
-		return
-	end
-
 	if tick < spawnerData.nextSpawnTick then	
-		return
-	end
-
-	if not spawnerData.spawner and not spawnerData.spawner.valid then
-		game.surfaces.nauvis.print("yo dawg handle ur broken shit")
 		return
 	end
 
@@ -247,11 +308,29 @@ local function handleSpawner(tick, spawnerData)
 		return
 	end
 
+	local unitDirection = defines.direction.east
+	local spawnOffsetDirection = 1
+	if spawnerData.spawner.force.name == Constants.MainTeamNames()[2] then
+		spawnOffsetDirection = -1
+		unitDirection = defines.direction.west
+	end
+
+	local unitRecipe = global.Data.UnitRecipes[spawnerData.itemName]
+
+	local desiredSpawnPosition = 
+	{
+		x = spawnerData.spawner.position.x + (spawnOffsetDirection * (spawnerData.spawner.tile_width + 1) * .5),
+		y = spawnerData.spawner.position.y
+	}
+
+	local spawnPosition = surface.find_non_colliding_position(unitRecipe.unitName, desiredSpawnPosition, 1, .25)
+
 	--create spitter spawner at spawn https://lua-api.factorio.com/latest/classes/LuaEntity.html
 	local entity = surface.create_entity({
-		name = "small-biter", 
-		position = {spawnerData.spawner.position.x + 1.5, spawnerData.spawner.position.y},
-		force = biterForce
+		name = unitRecipe.unitName, 
+		position = spawnPosition,
+		force = biterForce,
+		direction = unitDirection
 		})
 
 	local pathfindFlags =
@@ -291,15 +370,19 @@ local function handleSpawner(tick, spawnerData)
 
 	entity.set_command(command)
 
-	spawnerData.nextSpawnTick = tick + Constants.SpawnDelay()
+	spawnerData.nextSpawnTick = tick + unitRecipe.spawnRate
 end
 
 local function handleSpawners(tick)
+	for i=#global.Data.SpawnerData, 1, -1 do
+		local spawnerData = global.Data.SpawnerData[i]
 
-	for _, spawnerData in ipairs(global.Data.SpawnerData) do
-		handleSpawner(tick, spawnerData)
+		if spawnerData.spawner.valid then
+			handleSpawner(tick, spawnerData)
+		else
+			table.remove(global.Data.SpawnerData, i)
+		end
 	end
-	
 end
 
 local function handleCoins(tick)
@@ -311,7 +394,7 @@ local function handleCoins(tick)
 		util.insert_safe(player, {["coin"] = 1})
 	end
 
-	global.Data.NextCoinTick = tick + Constants.CoinDelayTicks()
+	global.Data.NextCoinTick = tick + global.Data.CoinRate
 end
 
 --https://lua-api.factorio.com/latest/events.html#on_tick
@@ -319,7 +402,7 @@ local function on_tick(event)
 	local tick = event.tick
 	--TODO: check win con
 
-	if global.Data.GameState == GameStateEnum.Running then
+	if global.Data.GameState == GameStateEnum.Gameplay then
 		drawCircles()
 		handleSpawners(tick)
 		handleCoins(tick)	
@@ -331,24 +414,31 @@ end
 --player.surface.create_entity{name="fire-flame", position=player.position, force="neutral"}
 
 local function on_chunk_generated(event)
-	if global.Data.GameState == GameStateEnum.Running then
+	if global.Data.GameState == GameStateEnum.Gameplay then
 		Map.OnChunkGenerated(event)
 	end
 end
 
 local function on_surface_cleared(event)
-	if global.Data.GameState == GameStateEnum.Running then
+	if global.Data.GameState == GameStateEnum.Gameplay then
 		Map.OnSurfaceCleared(event)
 	end
 end
 
 local function on_player_changed_position(event)
-	--if the game state is not running
-	if global.Data.GameState ~= GameStateEnum.Running then
+	--if the game state is not gameplay
+	if global.Data.GameState ~= GameStateEnum.Gameplay then
 		--we don't care about player position
 		return
 	end
+
 	local player = game.players[event.player_index]
+
+	--if the player is a spectator
+	if player.spectator then
+		--we don't need to limit their position
+		return
+	end
 
 	local mainTeamNames = Constants.MainTeamNames()
 
@@ -378,22 +468,39 @@ local function on_player_changed_position(event)
 	end
 end
 
+local function onRoundEnd()
+	global.Data.GameState = GameStateEnum.Lobby
+	
+	Forces.OnRoundEnd()
+
+	local lobbySurface = Lobby.GetLobbySurface()
+	for _, player in ipairs(game.connected_players) do
+		setPlayerToSpectator(player)
+		player.teleport({1, 1}, lobbySurface)
+		GUI.MakeLobbyGui(player)
+	end
+end
+
 --https://lua-api.factorio.com/latest/events.html#on_entity_destroyed
 local function on_entity_destroyed(event)
+	--if we're not in the gameplay state
+	if global.Data.GameState ~= GameStateEnum.Gameplay then
+		--ignore since this is from clearing the surface after a round ends
+		return
+	end
+
 	local teamName = Forces.GetTeamNameBySiloRegistrationNumber(event.registration_number)
 	local force = game.forces[teamName]
-
-
-	game.surfaces.nauvis.print(event.registration_number .. " destroyed.")
 	game.surfaces.nauvis.print(force.name .. " lost.")
 
-	global.Data.GameState = GameStateEnum.Lobby
+	onRoundEnd()
 end
+
 --https://lua-api.factorio.com/latest/events.html#on_market_item_purchased
 local function on_market_item_purchased(event)
 	local player = game.players[event.player_index]
 
-	util.insert_safe(player, {["assembling-machine-1"] = 1})
+	util.insert_safe(player, {["assembling-machine-2"] = 1})
 end
 
 --https://lua-api.factorio.com/latest/events.html#on_gui_click
@@ -422,6 +529,21 @@ local function on_gui_closed(event)
     end
 end
 
+local function on_player_mined_entity(event)
+
+	local recipeName = event.entity.get_recipe().name
+	local itemName = Constants.MapRecipeNameToItemName(recipeName)
+
+	--if the item is the item used to indicate an empty assembler
+	if itemName == Constants.EmptyAssemblerRecipe() then
+		--don't do anything
+		return
+	end
+
+	local player = game.players[event.player_index]
+	util.insert_safe(player, {[itemName] = 1})
+end
+
 --this is just here to act as an interface with the game itself 
 local voxWars = {}
 
@@ -443,8 +565,11 @@ voxWars.events =
 	[defines.events.on_gui_value_changed] = on_gui_value_changed, --https://lua-api.factorio.com/latest/events.html#on_gui_value_changed
 	[defines.events.on_gui_text_changed] = on_gui_text_changed, --https://lua-api.factorio.com/latest/events.html#on_gui_text_changed
 	[defines.events.on_player_removed] = on_player_removed, --https://lua-api.factorio.com/latest/events.html#on_player_removed
-	[defines.events.on_gui_closed] = on_gui_closed, --https://lua-api.factorio.com/latest/events.html#on_gui_closed\
+	[defines.events.on_gui_closed] = on_gui_closed, --https://lua-api.factorio.com/latest/events.html#on_gui_closed
+	[defines.events.on_player_mined_entity] = on_player_mined_entity, --https://lua-api.factorio.com/latest/events.html#on_player_mined_entity
 }
+
+
 
 voxWars.on_init = function()
 	--do initialize

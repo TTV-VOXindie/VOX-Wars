@@ -63,23 +63,9 @@ local function makeMarket(teamIndex, teamName)
 		})
 	end
 
-	--set red price
-	setCoinPriceAtMarket(entity, "automation-science-pack", 1);
-
-	--set green price
-	setCoinPriceAtMarket(entity, "logistic-science-pack", 2);
-
-	--set black price
-	setCoinPriceAtMarket(entity, "military-science-pack", 3);
-
-	--set blue price
-	setCoinPriceAtMarket(entity, "chemical-science-pack", 4);
-
-	--set purple price
-	setCoinPriceAtMarket(entity, "production-science-pack", 5);
-
-	--set yellow price
-	setCoinPriceAtMarket(entity, "utility-science-pack", 6);
+	for key, unitRecipe in pairs(global.Data.UnitRecipes) do
+		setCoinPriceAtMarket(entity, key, unitRecipe.price);
+	end
 end
 
 
@@ -160,9 +146,8 @@ function Public.OnChunkGenerated(event)
 end
 
 function Public.OnSurfaceCleared(event)
-
 	local teamNames = Constants.MainTeamNames()
-	
+
 	for i, teamName in ipairs(teamNames) do
 		makeSilo(i, teamName)
 		makeMarket(i, teamName)
@@ -203,7 +188,7 @@ function Public.Initialize()
 	global.Data.MapSettings.Bottom = global.Data.MapSettings.Height / 2
 end
 
-function Public.OnRoundStarted()
+function Public.SetupForRound()
 	local surface = game.surfaces.nauvis;
 	surface.generate_with_lab_tiles = true
 
@@ -212,7 +197,7 @@ function Public.OnRoundStarted()
 	map_gen_settings.height = global.Data.MapSettings.Height
 	map_gen_settings.starting_area = 0
 	surface.map_gen_settings = map_gen_settings
-	
+
 	surface.clear(true)
 
 	for x = global.Data.MapSettings.Left, global.Data.MapSettings.Right, 32 do
@@ -231,9 +216,13 @@ function Public.LaneWidth()
 	return global.Data.MapSettings.LaneWidth
 end
 
-function  Public.ChartAll()
-	--if the game state is not running
-	if global.Data.GameState ~= GameStateEnum.Running then
+local function chartArea(force, chart)
+	
+end
+
+function Public.ChartAll()
+	--if the game state is not gameplay
+	if global.Data.GameState ~= GameStateEnum.Gameplay then
 		--we don't care about player position
 		return
 	end
@@ -241,23 +230,24 @@ function  Public.ChartAll()
 	local mainTeamNames = Constants.MainTeamNames()
 	local surface = game.surfaces.nauvis
 
-	--create each force
+	local area =
+	{
+		left_top = 
+		{ 
+			x = global.Data.MapSettings.Left,
+			y = global.Data.MapSettings.Top
+		},
+		right_bottom = 
+		{
+			x = global.Data.MapSettings.Right,
+			y = global.Data.MapSettings.Bottom
+		}
+	}
+
+	--chart for each force
 	for _, teamName in ipairs(mainTeamNames) do
-
 		local force = game.forces[teamName]
-
-		force.chart(
-			surface,
-			{
-				{
-					global.Data.MapSettings.Left,
-					global.Data.MapSettings.Top
-				},
-				{
-					global.Data.MapSettings.Right,
-					global.Data.MapSettings.Bottom
-				}
-			})
+		force.chart(surface, area)
 	end
 end
 

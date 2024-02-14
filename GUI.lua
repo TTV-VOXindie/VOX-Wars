@@ -189,9 +189,7 @@ local function update_team_tab(player)
 		direction = "horizontal"
 	})
   
-	log("adding team frames for " .. #global.Data.config.teams .. " teams")
 	for _, team in pairs (global.Data.config.teams) do
-		log("adding team fram for team")
 	  addTeamFrame(team, teamsFlow, currentTeam, isPlayerAdmin)
 	end
 end
@@ -221,32 +219,41 @@ local guiFunctions =
 
 		--TODO: should probably move this shit somewhere
 
-		Map.OnRoundStarted()
+		Map.SetupForRound()
 
-		global.Data.GameState = GameStateEnum.Running
+		local surface = game.surfaces.nauvis
+
+		global.Data.GameState = GameStateEnum.Gameplay
 		for _, player in pairs (game.connected_players) do
 
 			local team = global.Data.team_players[player.index]
-			
-			player.force = team.name
 
-			local surface = game.surfaces.nauvis
-			local spawnPoint = player.force.get_spawn_position(surface)
-			player.teleport(spawnPoint, surface)
+			if team then
+				player.spectator = false
+				player.show_on_map = true
+				player.force = team.name
+			end
 
-			player.character = nil
-			local character = surface.create_entity{name = "character", position = spawnPoint, force = player.force}
-			player.set_controller
-			{
-				type = defines.controllers.character,
-				character = character
-			}
-			player.show_on_map = true
+			local desiredSpawnPosition = player.force.get_spawn_position(surface)
+			local spawnPosition = surface.find_non_colliding_position("character", desiredSpawnPosition, 1, .25)
+			player.teleport(spawnPosition, surface)
 
-			local message = "Player " .. player.name .. " was assigned to " .. team.name;
+			if team then
+				player.character = nil
+				local character = surface.create_entity({name = "character", position = spawnPosition, force = player.force})
+				player.set_controller
+				{
+					type = defines.controllers.character,
+					character = character
+				}
+				player.show_on_map = true
 
-			--write a message
-			player.print(message)
+				player.print({"you-were-assigned-to", team.name})
+				player.print({"shout-reminder", {"spectators-and-other-teams"}})
+			else
+				player.print({"you-were-assigned-to", {"spectator"}})
+				player.print({"shout-reminder", {"players-not-spectating"}})
+			end
 
 			--destroy the lobby gui
 			global.Data.elements.config[player.index].destroy()
@@ -254,11 +261,11 @@ local guiFunctions =
 	end
 }
 
-local function addMapSettingsTab(tabPane)
+local function addTeamSettingsTab(tabPane)
 	--add tab
 	local tab = tabPane.add({
 		type = "tab", 
-		caption = {"map-settings"}
+		caption = {"team-settings"}
 	})
 
 	--add flow
@@ -280,11 +287,9 @@ local function addMapSettingsTab(tabPane)
 	update_team_tab(player)
 end
 
-function Public.SetPlayerGui(player) --create_config_gui
-	
+function Public.MakeLobbyGui(player)
 	--if the player is not valid and connected
 	if not (player and player.valid and player.connected) then 
-
 		--the gui won't be used
 		return
 	end
@@ -321,7 +326,7 @@ function Public.SetPlayerGui(player) --create_config_gui
 	tabPane.selected_tab_index = 1
 	tabPane.style.maximal_height = 1080 * 0.8
 
-	addMapSettingsTab(tabPane)
+	addTeamSettingsTab(tabPane)
 
 	local footer = configWindow.add({
 		type = "flow",
@@ -396,7 +401,7 @@ function Public.ToggleInterface(player)
     local main_frame = player.gui.screen.ugg_main_frame
 
     if main_frame == nil then
-        Public.SetPlayerGui(player)
+        Public.MakeLobbyGui(player)
     else
         main_frame.destroy()
     end	

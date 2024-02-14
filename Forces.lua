@@ -11,7 +11,7 @@ local function getBiterTeamName(teamName)
 	return teamName .. " Biters"
 end
 
-local function setupBiterForce(teamName)
+local function setupBiterForce(teamName, color)
 
 	--get the biter team name
 	local biterTeamName = getBiterTeamName(teamName)
@@ -21,18 +21,25 @@ local function setupBiterForce(teamName)
 
 	--no friendly fire
 	force.friendly_fire = false
+	force.custom_color = color
+	force.share_chart = true
 
 	--add main team as friend
 	force.set_friend(teamName, true)
+
+	--add spectator team as friend
+	force.set_friend("player", true)
 end
 
-local function setupForce(teamName)
+local function setupForce(teamName, color)
 	
 	--get the force from the game script
 	local force = game.forces[teamName]
 
 	--if we leave friendly fire on, biters will attack players for some reason
 	force.friendly_fire = false
+	force.custom_color = color
+	force.share_chart = true
 
 	--add biter team as friend
 	local biterTeamName = getBiterTeamName(teamName)
@@ -41,7 +48,10 @@ local function setupForce(teamName)
 	force.disable_all_prototypes()
 	force.disable_research()
 
-	setupBiterForce(teamName)
+	--add spectator team as friend
+	force.set_friend("player", true)
+
+	setupBiterForce(teamName, color)
 
 	--setup empty data object for team
 	global.Data.forces[teamName] = {}
@@ -50,16 +60,16 @@ local function setupForce(teamName)
     local team =
     {
       name = teamName,
-      --color = scriptglobal.Data.config.colors[math.random(#scriptglobal.Data.config.colors)].name,
-      members = {},
-      team = "-"
+      members = {}
     }
+	
     table.insert(global.Data.config.teams, team)
 	------------------
 end
 
 local function makeForces()
 	local mainTeamNames = Constants.MainTeamNames()
+	local teamColors = Constants.TeamColors()
 
 	--create each force
 	for _, teamName in ipairs(mainTeamNames) do
@@ -68,8 +78,8 @@ local function makeForces()
 	end
 
 	--setup each force
-	for _, teamName in ipairs(mainTeamNames) do
-		setupForce(teamName)
+	for i, teamName in ipairs(mainTeamNames) do
+		setupForce(teamName, teamColors[i])
 	end
 end
 
@@ -87,7 +97,32 @@ end
 
 function  Public.SetSilo(teamName, silo, registrationNumber)
 	global.Data.forces[teamName].silo = silo
+	global.Data.forces[teamName].siloRegistrationNumber = registrationNumber
 	global.Data.teamNameBySiloRegistrationNumber[registrationNumber] = teamName
+end
+
+function Public.OnRoundEnd()
+	local mainTeamNames = Constants.MainTeamNames()
+
+	for _, teamName in ipairs(mainTeamNames) do
+
+		local silo = global.Data.forces[teamName].silo
+		if silo and silo.valid then
+			silo.destroy()
+		end
+
+		--clear out silo
+		global.Data.forces[teamName].silo = nil
+
+		--cache silo registration number
+		local siloRegistrationNumber = global.Data.forces[teamName].siloRegistrationNumber
+
+		--clear team name lookup
+		global.Data.teamNameBySiloRegistrationNumber[siloRegistrationNumber] = nil
+
+		--clear silo registration number
+		global.Data.forces[teamName].siloRegistrationNumber = nil
+	end
 end
 
 function Public.GetEnemyTeamName(teamName)

@@ -3,14 +3,7 @@
 local Public = {}
 
 local _lobbySurfaceName = "Lobby"
-function Public.GetSurface()
-
-    --if the lobby surface is already created
-    if game.surfaces[_lobbySurfaceName] then 
-        --return the lobby surface
-        return game.surfaces[_lobbySurfaceName] 
-    end
-
+function Public.Initialize()
     --create lobby surface
     local surface = game.create_surface(_lobbySurfaceName, {width = 1, height = 1})
 
@@ -19,6 +12,10 @@ function Public.GetSurface()
 
     --return the newly created lobby suface
     return surface
+end
+
+function Public.GetLobbySurface()
+    return game.surfaces[_lobbySurfaceName]
 end
 
 --return public interface
