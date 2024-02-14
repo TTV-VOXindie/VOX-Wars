@@ -348,7 +348,7 @@ local function handleSpawner(tick, spawnerData)
 		{
 			{
 				type = defines.command.go_to_location,
-				destination = enemySilo,
+				destination_entity = enemySilo,
 				distraction = defines.distraction.by_anything,
 				radius = 3, --should be width of silo
 				pathfind_flags = pathfindFlags
