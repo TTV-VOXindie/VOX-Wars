@@ -348,7 +348,7 @@ local function handleSpawner(tick, spawnerData)
 		{
 			{
 				type = defines.command.go_to_location,
-				destination = enemySilo.position,
+				destination = enemySilo,
 				distraction = defines.distraction.by_anything,
 				radius = 3, --should be width of silo
 				pathfind_flags = pathfindFlags
@@ -500,7 +500,7 @@ end
 local function on_market_item_purchased(event)
 	local player = game.players[event.player_index]
 
-	util.insert_safe(player, {["assembling-machine-2"] = 1})
+	util.insert_safe(player, {["assembling-machine-2"] = event.count})
 end
 
 --https://lua-api.factorio.com/latest/events.html#on_gui_click
@@ -530,6 +530,11 @@ local function on_gui_closed(event)
 end
 
 local function on_player_mined_entity(event)
+	--if it's not an assembling machine
+	if not (event.entity.name == "assembling-machine-1" or event.entity.name == "assembling-machine-2" or event.entity.name == "assembling-machine-3") then
+		--ignore it
+		return
+	end
 
 	local recipeName = event.entity.get_recipe().name
 	local itemName = Constants.MapRecipeNameToItemName(recipeName)

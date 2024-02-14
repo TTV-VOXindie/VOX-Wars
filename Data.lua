@@ -20,46 +20,46 @@ local data =
     {
       unitName = "medium-biter",
       price = 200,
-      spawnRate = 1 * 60 --1 second
+      spawnRate = 5 * 60 --5 seconds
     },
     ["military-science-pack"] =
     {
       unitName = "big-biter",
       price = 300,
-      spawnRate = 1 * 60 --1 second
+      spawnRate = 25 * 60 --25 seconds
     },
     ["chemical-science-pack"] =
     {
       unitName = "behemoth-biter",
       price = 400,
-      spawnRate = 1 * 60 --1 second
+      spawnRate = 125 * 60 --125 seconds
     },
     ["heavy-oil-barrel"] =
     {
       unitName = "small-spitter",
       price = 100,
-      spawnRate = 1 * 60, --1 second
+      spawnRate = 2 * 60, --1 second
       recipeNameForAssembler = "fill-heavy-oil-barrel"
     },
     ["lubricant-barrel"] =
     {
       unitName = "medium-spitter",
       price = 200,
-      spawnRate = 1 * 60, --1 second
+      spawnRate = 10 * 60, --5 seconds
       recipeNameForAssembler = "fill-lubricant-barrel"
     },
     ["crude-oil-barrel"] =
     {
       unitName = "big-spitter",
       price = 300,
-      spawnRate = 1 * 60, --1 second
+      spawnRate = 50 * 60, --25 seconds
       recipeNameForAssembler = "fill-crude-oil-barrel"
     },
     ["water-barrel"] =
     {
       unitName = "behemoth-spitter",
       price = 400,
-      spawnRate = 1 * 60, --1 second
+      spawnRate = 250 * 60, --125 seconds
       recipeNameForAssembler = "fill-water-barrel"
     }
   },
