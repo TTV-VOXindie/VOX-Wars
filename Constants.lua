@@ -45,18 +45,20 @@ local _itemNameToRecipeName =
 
 local _recipeNameToItemName = {}
 
+local function buildRecipeNameToItemName()
+	for itemName, recipeName in pairs(_itemNameToRecipeName) do
+		_recipeNameToItemName[recipeName] = itemName
+	end
+end
+
+buildRecipeNameToItemName()
+
 function  Public.MapItemNameToRecipeName(itemName)
 	return _itemNameToRecipeName[itemName] or itemName
 end
 
 function  Public.MapRecipeNameToItemName(recipeName)
 	return _recipeNameToItemName[recipeName] or recipeName
-end
-
-function Public.Initialize()
-	for itemName, recipeName in pairs(_itemNameToRecipeName) do
-		_recipeNameToItemName[recipeName] = itemName
-	end
 end
 
 --return publicly facing things

@@ -8,58 +8,52 @@ local data =
   SpawnerData = {},
   CoinRate = 60 / 10, --10 per second
 	NextCoinTick = 0,
+  SpawnRate = 30 * 60, --30 seconds
+  NextSpawnTick = 0,
   UnitRecipes = 
   {
 		["automation-science-pack"] =
     {
       unitName = "small-biter",
-      price = 100,
-      spawnRate = 1 * 60 --1 second
+      price = 100
     },
 		["logistic-science-pack"] =
     {
       unitName = "medium-biter",
-      price = 200,
-      spawnRate = 5 * 60 --5 seconds
+      price = 200
     },
     ["military-science-pack"] =
     {
       unitName = "big-biter",
-      price = 300,
-      spawnRate = 25 * 60 --25 seconds
+      price = 400
     },
     ["chemical-science-pack"] =
     {
       unitName = "behemoth-biter",
-      price = 400,
-      spawnRate = 125 * 60 --125 seconds
+      price = 800
     },
     ["heavy-oil-barrel"] =
     {
       unitName = "small-spitter",
-      price = 100,
-      spawnRate = 2 * 60, --1 second
+      price = 200,
       recipeNameForAssembler = "fill-heavy-oil-barrel"
     },
     ["lubricant-barrel"] =
     {
       unitName = "medium-spitter",
-      price = 200,
-      spawnRate = 10 * 60, --5 seconds
+      price = 400,
       recipeNameForAssembler = "fill-lubricant-barrel"
     },
     ["crude-oil-barrel"] =
     {
       unitName = "big-spitter",
-      price = 300,
-      spawnRate = 50 * 60, --25 seconds
+      price = 800,
       recipeNameForAssembler = "fill-crude-oil-barrel"
     },
     ["water-barrel"] =
     {
       unitName = "behemoth-spitter",
-      price = 400,
-      spawnRate = 250 * 60, --125 seconds
+      price = 1600,
       recipeNameForAssembler = "fill-water-barrel"
     }
   },

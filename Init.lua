@@ -11,7 +11,6 @@ local Lobby = require "Lobby"
 local Public = {}
 
 function Public.Initialize()
-	Constants.Initialize()
 	Data.Initialize()
 	Forces.Initialize()
 	Map.Initialize()

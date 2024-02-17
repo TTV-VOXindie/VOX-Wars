@@ -231,7 +231,6 @@ local function on_gui_opened(event)
 	global.Data.SpawnerData[#global.Data.SpawnerData + 1] =
 	{
 		spawner = entity,
-		nextSpawnTick = event.tick + global.Data.UnitRecipes[itemName].spawnRate,
 		itemName = itemName
 	} 
 end
@@ -291,10 +290,6 @@ end
 
 
 local function handleSpawner(tick, spawnerData)
-	if tick < spawnerData.nextSpawnTick then	
-		return
-	end
-
 	--get the team name
 	local teamName = spawnerData.spawner.force.name
 	
@@ -369,11 +364,13 @@ local function handleSpawner(tick, spawnerData)
 	}
 
 	entity.set_command(command)
-
-	spawnerData.nextSpawnTick = tick + unitRecipe.spawnRate
 end
 
 local function handleSpawners(tick)
+	if tick < global.Data.NextSpawnTick then
+		return
+	end
+
 	for i=#global.Data.SpawnerData, 1, -1 do
 		local spawnerData = global.Data.SpawnerData[i]
 
@@ -383,6 +380,8 @@ local function handleSpawners(tick)
 			table.remove(global.Data.SpawnerData, i)
 		end
 	end
+
+	global.Data.NextSpawnTick = tick + global.Data.NextSpawnTick
 end
 
 local function handleCoins(tick)
@@ -400,7 +399,6 @@ end
 --https://lua-api.factorio.com/latest/events.html#on_tick
 local function on_tick(event)
 	local tick = event.tick
-	--TODO: check win con
 
 	if global.Data.GameState == GameStateEnum.Gameplay then
 		drawCircles()
