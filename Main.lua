@@ -166,7 +166,7 @@ end
 
 local function givePlayerItemBasedOnAssemblerRecipe(player, recipeName)
 	--give player back shit
-	local itemName = Constants.MapRecipeNameToItemName()
+	local itemName = Constants.MapRecipeNameToItemName(recipeName)
 
 	--if the item is the item used to indicate an empty assembler
 	if itemName == Constants.EmptyAssemblerRecipe() then
@@ -335,7 +335,7 @@ local function handleSpawner(tick, spawnerData)
 
 	local spawnPosition = surface.find_non_colliding_position(unitRecipe.unitName, desiredSpawnPosition, 1, .25)
 
-	--create spitter spawner at spawn https://lua-api.factorio.com/latest/classes/LuaEntity.html
+	--create entity at spawn https://lua-api.factorio.com/latest/classes/LuaEntity.html
 	local entity = surface.create_entity({
 		name = unitRecipe.unitName, 
 		position = spawnPosition,
