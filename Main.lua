@@ -164,6 +164,19 @@ local on_built_entity = function(event)
 	event.created_entity.recipe_locked = true
 end
 
+local function givePlayerItemBasedOnAssemblerRecipe(player, recipeName)
+	--give player back shit
+	local itemName = Constants.MapRecipeNameToItemName()
+
+	--if the item is the item used to indicate an empty assembler
+	if itemName == Constants.EmptyAssemblerRecipe() then
+		--don't do anything
+		return
+	end
+
+	util.insert_safe(player, {[itemName] = 1})
+end
+
 --https://lua-api.factorio.com/latest/events.html#on_gui_opened
 local function on_gui_opened(event)
 
@@ -185,10 +198,10 @@ local function on_gui_opened(event)
 	if cursor_stack == nil or not cursor_stack.valid_for_read then
 		return
 	end
-	
+
 	--close the gui the player had open (so don't open the entity gui)
 	player.opened = nil
-	
+
 	local itemName = cursor_stack.name
 
 	--if it's not a valid recipe
@@ -197,24 +210,26 @@ local function on_gui_opened(event)
 		return
 	end
 
-	--get the recipe name for the assembling machine
-	local recipeName = Constants.MapItemNameToRecipeName(itemName)
+	--get the recipe name we're trying to assign to the assembling machine
+	local newRecipeName = Constants.MapItemNameToRecipeName(itemName)
 
 	--get the current recipe in the assembler
 	local currentRecipe = entity.get_recipe()
 
-	
-
-	--if there's already a recipe and it's the same as the one we're trying to assign
-	if currentRecipe and currentRecipe.name == recipeName then
-		--bail out
-		return
+	--if there's already a recipe in the machine
+	if currentRecipe then
+		--if the recipe in the machine is the same as the one we're trying to assign
+		if currentRecipe.name == newRecipeName then
+			--bail out
+			return
+		end
+		
+		givePlayerItemBasedOnAssemblerRecipe(player, currentRecipe.name)
 	end	
 
 	--set the recipe to be what was in the player cursor
-	entity.set_recipe(recipeName)
+	entity.set_recipe(newRecipeName)
 
-	
 	--get direction
 	local direction = defines.direction.east
 	if player.force.name == Constants.MainTeamNames()[2] then
@@ -534,17 +549,10 @@ local function on_player_mined_entity(event)
 		return
 	end
 
-	local recipeName = event.entity.get_recipe().name
-	local itemName = Constants.MapRecipeNameToItemName(recipeName)
-
-	--if the item is the item used to indicate an empty assembler
-	if itemName == Constants.EmptyAssemblerRecipe() then
-		--don't do anything
-		return
-	end
-
 	local player = game.players[event.player_index]
-	util.insert_safe(player, {[itemName] = 1})
+	local recipeName = event.entity.get_recipe().name
+
+	givePlayerItemBasedOnAssemblerRecipe(player, recipeName)
 end
 
 --this is just here to act as an interface with the game itself 
